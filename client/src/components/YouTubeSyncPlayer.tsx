@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Song, PlaybackState } from "../types";
-import { Play, Volume2, VolumeX, Video, Disc, Sparkles } from "lucide-react";
+import { Volume2, VolumeX, Sparkles } from "lucide-react";
 
 declare global {
   interface Window {
@@ -20,17 +20,15 @@ interface YouTubeSyncPlayerProps {
 export const YouTubeSyncPlayer: React.FC<YouTubeSyncPlayerProps> = ({
   song,
   playbackState,
-  showVideo,
-  onToggleVideo,
   onEnded
 }) => {
   const playerRef = useRef<any>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
   const [isReady, setIsReady] = useState(false);
   const [isMutedByBrowser, setIsMutedByBrowser] = useState(false);
   const currentVideoIdRef = useRef<string | null>(null);
+  const lastStateActionRef = useRef<string>("");
 
-  // 1. Load YouTube IFrame API
+  // 1. Load YouTube IFrame API script
   useEffect(() => {
     if (window.YT && window.YT.Player) {
       initPlayer();
@@ -73,7 +71,7 @@ export const YouTubeSyncPlayer: React.FC<YouTubeSyncPlayerProps> = ({
             setIsReady(true);
             try {
               event.target.unMute();
-              event.target.setVolume(90);
+              event.target.setVolume(95);
             } catch {}
           },
           onStateChange: (event: any) => {
@@ -81,18 +79,15 @@ export const YouTubeSyncPlayer: React.FC<YouTubeSyncPlayerProps> = ({
             if (event.data === 0 && onEnded) {
               onEnded();
             }
-          },
-          onError: (e: any) => {
-            console.warn("YouTube player error:", e);
           }
         }
       });
     } catch (err) {
-      console.warn("Could not instantiate YT.Player:", err);
+      console.warn("YouTube player init:", err);
     }
   };
 
-  // 2. Synchronize playback with server state
+  // 2. Smooth, uninterrupted playback sync (Zero repeated seeks!)
   useEffect(() => {
     if (!isReady || !playerRef.current || !song || song.source !== "youtube" || !song.videoId) {
       if (isReady && playerRef.current && typeof playerRef.current.pauseVideo === "function") {
@@ -106,7 +101,7 @@ export const YouTubeSyncPlayer: React.FC<YouTubeSyncPlayerProps> = ({
     const player = playerRef.current;
     const videoId = song.videoId;
 
-    // Calculate current expected server time
+    // Expected server playback time
     const now = Date.now();
     let targetTime = playbackState.currentTime;
     if (playbackState.isPlaying) {
@@ -114,7 +109,7 @@ export const YouTubeSyncPlayer: React.FC<YouTubeSyncPlayerProps> = ({
       targetTime = Math.min(playbackState.currentTime + elapsed, playbackState.duration || 600);
     }
 
-    // New Video check
+    // A. Video changed: Load new video and start ONCE
     if (currentVideoIdRef.current !== videoId) {
       currentVideoIdRef.current = videoId;
       try {
@@ -123,47 +118,55 @@ export const YouTubeSyncPlayer: React.FC<YouTubeSyncPlayerProps> = ({
           startSeconds: Math.max(0, targetTime)
         });
         player.unMute();
-        player.setVolume(90);
+        player.setVolume(95);
+
         if (!playbackState.isPlaying) {
           player.pauseVideo();
         }
-      } catch (err) {
+      } catch {
         setIsMutedByBrowser(true);
       }
       return;
     }
 
-    // Drift synchronization & Play/Pause state
+    // B. Handle Play / Pause state transitions without seeking
     try {
       if (typeof player.isMuted === "function" && player.isMuted()) {
         setIsMutedByBrowser(true);
       }
 
-      const currentTime = typeof player.getCurrentTime === "function" ? player.getCurrentTime() : 0;
-      const drift = Math.abs(currentTime - targetTime);
+      const state = typeof player.getPlayerState === "function" ? player.getPlayerState() : -1;
+      // 1 = PLAYING, 2 = PAUSED, 3 = BUFFERING
 
-      if (drift > 2.0) {
+      if (playbackState.isPlaying) {
+        if (state !== 1 && state !== 3) {
+          player.unMute();
+          player.playVideo();
+        }
+      } else {
+        if (state === 1) {
+          player.pauseVideo();
+        }
+      }
+
+      // C. ONLY seek if drift is HUGE (e.g. > 6 seconds from manual scrub/lag)
+      // Never seek repeatedly during normal playback!
+      const currentPos = typeof player.getCurrentTime === "function" ? player.getCurrentTime() : 0;
+      const drift = Math.abs(currentPos - targetTime);
+
+      if (drift > 6.0) {
         player.seekTo(targetTime, true);
       }
-
-      const state = typeof player.getPlayerState === "function" ? player.getPlayerState() : -1;
-      // 1 = PLAYING, 2 = PAUSED
-      if (playbackState.isPlaying && state !== 1 && state !== 3) {
-        player.unMute();
-        player.playVideo();
-      } else if (!playbackState.isPlaying && state === 1) {
-        player.pauseVideo();
-      }
-    } catch (e) {
+    } catch {
       setIsMutedByBrowser(true);
     }
-  }, [isReady, song, playbackState.isPlaying, playbackState.currentTime, playbackState.updatedAt]);
+  }, [isReady, song?.videoId, playbackState.isPlaying, playbackState.currentTime]);
 
-  const handleUnmuteClick = () => {
+  const handleUnmute = () => {
     if (playerRef.current) {
       try {
         playerRef.current.unMute();
-        playerRef.current.setVolume(90);
+        playerRef.current.setVolume(95);
         playerRef.current.playVideo();
         setIsMutedByBrowser(false);
       } catch (e) {
@@ -176,41 +179,38 @@ export const YouTubeSyncPlayer: React.FC<YouTubeSyncPlayerProps> = ({
 
   return (
     <div className="w-full relative my-3">
-      {/* Tap to Unmute / Play Sound Banner if browser blocked audio */}
+      {/* Tap to Unmute Banner if browser auto-muted */}
       {isMutedByBrowser && (
         <div 
-          onClick={handleUnmuteClick}
+          onClick={handleUnmute}
           className="mb-3 p-3.5 rounded-2xl bg-gradient-to-r from-rose-500 via-pink-500 to-indigo-500 text-white flex items-center justify-between text-xs font-bold shadow-xl shadow-rose-500/25 cursor-pointer transform hover:scale-[1.01] active:scale-95 transition-all animate-bounce"
         >
           <div className="flex items-center gap-2">
             <Volume2 className="w-5 h-5 animate-pulse" />
-            <span>🔊 Audio is muted by browser. TAP HERE TO UNMUTE & PLAY SOUND!</span>
+            <span>🔊 Sound is muted by browser. TAP HERE TO HEAR MUSIC!</span>
           </div>
-          <span className="px-3 py-1 bg-white/20 rounded-xl">Tap to Unmute</span>
+          <span className="px-3 py-1 bg-white/25 rounded-xl text-xs">Unmute Now</span>
         </div>
       )}
 
-      {/* Video Container - Always visible when YouTube is playing */}
-      <div 
-        ref={containerRef}
-        className="w-full aspect-video rounded-2xl overflow-hidden shadow-2xl border border-white/15 bg-black relative"
-      >
+      {/* Video Container - Always rendered with native controls for single-flow sound */}
+      <div className="w-full aspect-video rounded-2xl overflow-hidden shadow-2xl border border-white/15 bg-black relative">
         <div id="multimax-yt-iframe" className="w-full h-full" />
       </div>
 
-      {/* Badge & Toggle */}
-      <div className="flex items-center justify-between mt-2.5 px-1">
+      {/* Control Bar */}
+      <div className="flex items-center justify-between mt-2 px-1">
         <div className="flex items-center gap-1.5 text-xs font-bold text-rose-400 bg-rose-500/10 px-3 py-1 rounded-full border border-rose-500/20">
           <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
-          <span>YouTube Music • Live Stream</span>
+          <span>YouTube Music • Continuous Audio</span>
         </div>
 
         <button
-          onClick={handleUnmuteClick}
-          className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-xs font-semibold text-white transition-all active:scale-95"
+          onClick={handleUnmute}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-xs font-semibold text-white transition-all active:scale-95"
         >
           <Volume2 className="w-3.5 h-3.5 text-emerald-400" />
-          <span>Unmute / Max Volume</span>
+          <span>Max Volume / Unmute</span>
         </button>
       </div>
     </div>

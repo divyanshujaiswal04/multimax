@@ -107,7 +107,7 @@ export function setupSocketHandlers(io: Server) {
       if (!room) return;
 
       const isHost = currentGuestId ? roomManager.isHost(currentRoomCode, currentGuestId) : false;
-      if (!isHost && !room.settings.guestsCanControlPlayback) {
+      if (!isHost && room.settings.guestsCanControlPlayback === false) {
         socket.emit("error_message", { message: "Only the host can change tracks directly." });
         return;
       }
@@ -129,7 +129,7 @@ export function setupSocketHandlers(io: Server) {
       if (!room) return;
 
       const isHost = currentGuestId ? roomManager.isHost(currentRoomCode, currentGuestId) : false;
-      if (!isHost && !room.settings.guestsCanControlPlayback) {
+      if (!isHost && room.settings.guestsCanControlPlayback === false) {
         socket.emit("error_message", { message: "Only the host can control playback in this room." });
         return;
       }
@@ -150,7 +150,7 @@ export function setupSocketHandlers(io: Server) {
       if (!room) return;
 
       const isHost = currentGuestId ? roomManager.isHost(currentRoomCode, currentGuestId) : false;
-      if (!isHost && !room.settings.guestsCanControlPlayback) {
+      if (!isHost && room.settings.guestsCanControlPlayback === false) {
         socket.emit("error_message", { message: "Only the host can control playback in this room." });
         return;
       }
@@ -166,12 +166,14 @@ export function setupSocketHandlers(io: Server) {
     });
 
     socket.on("playback_seek", (payload: { time: number }) => {
-      if (!currentRoomCode) return;
+      if (!currentRoomCode || typeof payload.time !== "number") return;
       const room = roomManager.getRoom(currentRoomCode);
       if (!room) return;
 
       const isHost = currentGuestId ? roomManager.isHost(currentRoomCode, currentGuestId) : false;
-      if (!isHost && !room.settings.guestsCanControlPlayback) return;
+      if (!isHost && room.settings.guestsCanControlPlayback === false) {
+        return;
+      }
 
       roomManager.seek(currentRoomCode, payload.time);
       const roomView = roomManager.getClientRoomView(currentRoomCode);
@@ -189,7 +191,7 @@ export function setupSocketHandlers(io: Server) {
       if (!room) return;
 
       const isHost = currentGuestId ? roomManager.isHost(currentRoomCode, currentGuestId) : false;
-      if (!isHost && !room.settings.guestsCanControlPlayback) {
+      if (!isHost && room.settings.guestsCanControlPlayback === false) {
         socket.emit("error_message", { message: "Only the host can skip songs." });
         return;
       }

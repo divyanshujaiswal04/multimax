@@ -220,7 +220,7 @@ export const RoomDashboardPage: React.FC = () => {
     );
   }
 
-  const canControlPlayback = isHost || room.settings.guestsCanControlPlayback;
+  const canControlPlayback = isHost || room.settings.guestsCanControlPlayback !== false;
 
   return (
     <div className="min-h-screen flex flex-col pb-24 md:pb-12">
@@ -306,10 +306,10 @@ export const RoomDashboardPage: React.FC = () => {
 
       {/* MAIN LAYOUT */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 flex-1 w-full">
-        {/* DESKTOP VIEW (md+): Multi-column Side-by-side */}
-        <div className="hidden md:grid md:grid-cols-12 gap-6 items-start">
-          {/* Left / Center Column (7 cols): Main Music Player */}
-          <div className="md:col-span-7 space-y-6">
+        {/* Single Unified Grid: Player is NEVER unmounted so audio flows continuously! */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+          {/* Main Music Player Column (Always mounted so sound never cuts out) */}
+          <div className={`md:col-span-7 space-y-6 ${mobileTab !== "player" ? "hidden md:block" : "block"}`}>
             <MusicPlayer
               currentSong={room.currentSong}
               playbackState={room.playbackState}
@@ -336,8 +336,8 @@ export const RoomDashboardPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Right Column (5 cols): Up Next Queue & Connected Devices */}
-          <div className="md:col-span-5 space-y-6">
+          {/* Up Next Queue Column */}
+          <div className={`md:col-span-5 space-y-6 ${mobileTab === "player" ? "hidden md:block" : mobileTab === "queue" ? "block" : "hidden md:block"}`}>
             <QueuePanel
               queue={room.queue}
               currentGuestId={currentGuest?.id || ""}
@@ -346,49 +346,27 @@ export const RoomDashboardPage: React.FC = () => {
               onOpenAddMusic={() => setIsAddMusicOpen(true)}
             />
 
-            <ConnectedDevicesPanel
-              guests={room.guests}
-              currentGuestId={currentGuest?.id || ""}
-              isHost={isHost}
-              onOpenShare={() => setIsShareOpen(true)}
-            />
-          </div>
-        </div>
-
-        {/* MOBILE VIEW (< md): Single Tab Switcher */}
-        <div className="md:hidden">
-          {mobileTab === "player" && (
-            <div className="space-y-4">
-              <MusicPlayer
-                currentSong={room.currentSong}
-                playbackState={room.playbackState}
+            {/* Connected Devices shown in desktop right column */}
+            <div className="hidden md:block">
+              <ConnectedDevicesPanel
+                guests={room.guests}
+                currentGuestId={currentGuest?.id || ""}
                 isHost={isHost}
-                canControlPlayback={canControlPlayback}
+                onOpenShare={() => setIsShareOpen(true)}
               />
-              <div className="glass-card rounded-xl p-3 border border-white/5 flex items-center justify-between text-xs text-slate-300">
-                <span>Display Name: <strong>{currentGuest?.name}</strong></span>
-                {isHost && <span className="text-amber-400 font-bold">Host</span>}
-              </div>
             </div>
-          )}
+          </div>
 
-          {mobileTab === "queue" && (
-            <QueuePanel
-              queue={room.queue}
-              currentGuestId={currentGuest?.id || ""}
-              isHost={isHost}
-              queueLocked={room.settings.queueLocked}
-              onOpenAddMusic={() => setIsAddMusicOpen(true)}
-            />
-          )}
-
+          {/* Connected Devices (Mobile tab) */}
           {mobileTab === "devices" && (
-            <ConnectedDevicesPanel
-              guests={room.guests}
-              currentGuestId={currentGuest?.id || ""}
-              isHost={isHost}
-              onOpenShare={() => setIsShareOpen(true)}
-            />
+            <div className="md:hidden space-y-6">
+              <ConnectedDevicesPanel
+                guests={room.guests}
+                currentGuestId={currentGuest?.id || ""}
+                isHost={isHost}
+                onOpenShare={() => setIsShareOpen(true)}
+              />
+            </div>
           )}
         </div>
       </main>
