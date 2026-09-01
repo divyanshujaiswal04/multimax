@@ -40,7 +40,6 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({
   const [shuffleOn, setShuffleOn] = useState<boolean>(false);
   const [repeatOn, setRepeatOn] = useState<boolean>(false);
   const [needsGesture, setNeedsGesture] = useState<boolean>(false);
-  const [showVideo, setShowVideo] = useState<boolean>(false);
 
   // Sync with audio engine events
   useEffect(() => {
@@ -175,12 +174,10 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({
         </div>
       )}
 
-      {/* YouTube Player Integration (Syncs video & audio across devices) */}
+      {/* Background YouTube Audio Streamer */}
       <YouTubeSyncPlayer
         song={currentSong}
         playbackState={playbackState}
-        showVideo={showVideo}
-        onToggleVideo={() => setShowVideo(!showVideo)}
         onEnded={handleNext}
       />
 

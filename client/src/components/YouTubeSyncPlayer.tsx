@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Song, PlaybackState } from "../types";
-import { Volume2, VolumeX, Sparkles } from "lucide-react";
+import { Volume2 } from "lucide-react";
 
 declare global {
   interface Window {
@@ -12,8 +12,6 @@ declare global {
 interface YouTubeSyncPlayerProps {
   song: Song | null;
   playbackState: PlaybackState;
-  showVideo: boolean;
-  onToggleVideo: () => void;
   onEnded?: () => void;
 }
 
@@ -26,7 +24,6 @@ export const YouTubeSyncPlayer: React.FC<YouTubeSyncPlayerProps> = ({
   const [isReady, setIsReady] = useState(false);
   const [isMutedByBrowser, setIsMutedByBrowser] = useState(false);
   const currentVideoIdRef = useRef<string | null>(null);
-  const lastStateActionRef = useRef<string>("");
 
   // 1. Load YouTube IFrame API script
   useEffect(() => {
@@ -59,7 +56,7 @@ export const YouTubeSyncPlayer: React.FC<YouTubeSyncPlayerProps> = ({
         width: "100%",
         playerVars: {
           autoplay: 1,
-          controls: 1,
+          controls: 0,
           enablejsapi: 1,
           modestbranding: 1,
           playsinline: 1,
@@ -87,7 +84,7 @@ export const YouTubeSyncPlayer: React.FC<YouTubeSyncPlayerProps> = ({
     }
   };
 
-  // 2. Smooth, uninterrupted playback sync (Zero repeated seeks!)
+  // 2. Smooth playback sync (Zero repeated seeks!)
   useEffect(() => {
     if (!isReady || !playerRef.current || !song || song.source !== "youtube" || !song.videoId) {
       if (isReady && playerRef.current && typeof playerRef.current.pauseVideo === "function") {
@@ -149,8 +146,7 @@ export const YouTubeSyncPlayer: React.FC<YouTubeSyncPlayerProps> = ({
         }
       }
 
-      // C. ONLY seek if drift is HUGE (e.g. > 6 seconds from manual scrub/lag)
-      // Never seek repeatedly during normal playback!
+      // C. ONLY seek if drift is HUGE (> 6.0s)
       const currentPos = typeof player.getCurrentTime === "function" ? player.getCurrentTime() : 0;
       const drift = Math.abs(currentPos - targetTime);
 
@@ -178,40 +174,27 @@ export const YouTubeSyncPlayer: React.FC<YouTubeSyncPlayerProps> = ({
   if (!song || song.source !== "youtube") return null;
 
   return (
-    <div className="w-full relative my-3">
-      {/* Tap to Unmute Banner if browser auto-muted */}
+    <div className="w-full relative">
+      {/* Tap to Unmute Banner if browser auto-muted audio */}
       {isMutedByBrowser && (
         <div 
           onClick={handleUnmute}
-          className="mb-3 p-3.5 rounded-2xl bg-gradient-to-r from-rose-500 via-pink-500 to-indigo-500 text-white flex items-center justify-between text-xs font-bold shadow-xl shadow-rose-500/25 cursor-pointer transform hover:scale-[1.01] active:scale-95 transition-all animate-bounce"
+          className="mb-4 p-3.5 rounded-2xl bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white flex items-center justify-between text-xs font-bold shadow-xl shadow-indigo-500/25 cursor-pointer transform hover:scale-[1.01] active:scale-95 transition-all animate-bounce"
         >
           <div className="flex items-center gap-2">
-            <Volume2 className="w-5 h-5 animate-pulse" />
-            <span>🔊 Sound is muted by browser. TAP HERE TO HEAR MUSIC!</span>
+            <Volume2 className="w-5 h-5 animate-pulse text-yellow-300" />
+            <span>🔊 Audio is muted by your browser. TAP HERE TO HEAR MUSIC!</span>
           </div>
-          <span className="px-3 py-1 bg-white/25 rounded-xl text-xs">Unmute Now</span>
+          <span className="px-3 py-1 bg-white/20 rounded-xl text-xs">Unmute Now</span>
         </div>
       )}
 
-      {/* Video Container - Always rendered with native controls for single-flow sound */}
-      <div className="w-full aspect-video rounded-2xl overflow-hidden shadow-2xl border border-white/15 bg-black relative">
+      {/* Invisible YouTube Audio Streamer - Pure Audio Experience! */}
+      <div 
+        className="fixed -bottom-96 -right-96 w-[200px] h-[200px] opacity-0 pointer-events-none overflow-hidden" 
+        aria-hidden="true"
+      >
         <div id="multimax-yt-iframe" className="w-full h-full" />
-      </div>
-
-      {/* Control Bar */}
-      <div className="flex items-center justify-between mt-2 px-1">
-        <div className="flex items-center gap-1.5 text-xs font-bold text-rose-400 bg-rose-500/10 px-3 py-1 rounded-full border border-rose-500/20">
-          <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
-          <span>YouTube Music • Continuous Audio</span>
-        </div>
-
-        <button
-          onClick={handleUnmute}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-xs font-semibold text-white transition-all active:scale-95"
-        >
-          <Volume2 className="w-3.5 h-3.5 text-emerald-400" />
-          <span>Max Volume / Unmute</span>
-        </button>
       </div>
     </div>
   );
