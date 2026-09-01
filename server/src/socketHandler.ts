@@ -193,6 +193,25 @@ export function setupSocketHandlers(io: Server) {
       }
     });
 
+    socket.on("playback_volume", (payload: { volume: number }) => {
+      if (!currentRoomCode || typeof payload.volume !== "number") return;
+      roomManager.setMasterVolume(currentRoomCode, payload.volume);
+      io.to(`room_${currentRoomCode}`).emit("master_volume_updated", {
+        volume: payload.volume,
+        isMuted: false
+      });
+    });
+
+    socket.on("playback_mute", (payload: { isMuted: boolean }) => {
+      if (!currentRoomCode) return;
+      roomManager.setMasterMute(currentRoomCode, payload.isMuted);
+      const room = roomManager.getRoom(currentRoomCode);
+      io.to(`room_${currentRoomCode}`).emit("master_volume_updated", {
+        volume: room?.playbackState.masterVolume ?? 0.8,
+        isMuted: payload.isMuted
+      });
+    });
+
     socket.on("playback_skip", () => {
       if (!currentRoomCode) return;
       const room = roomManager.getRoom(currentRoomCode);

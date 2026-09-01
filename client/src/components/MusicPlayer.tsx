@@ -58,6 +58,25 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({
     return () => audioEngine.removeListener(handleAudioEvent);
   }, []);
 
+  // Listen for master room volume updates from other devices
+  useEffect(() => {
+    const socket = socketService.getSocket();
+    const handleMasterVolume = (data: { volume: number; isMuted: boolean }) => {
+      setVolume(data.volume);
+      setIsMuted(data.isMuted);
+      if (data.isMuted) {
+        audioEngine.setVolume(0);
+      } else {
+        audioEngine.setVolume(data.volume);
+      }
+    };
+
+    socket.on("master_volume_updated", handleMasterVolume);
+    return () => {
+      socket.off("master_volume_updated", handleMasterVolume);
+    };
+  }, []);
+
   // Update progress timer smoothly when playing
   useEffect(() => {
     if (isScrubbing) return;
@@ -120,16 +139,18 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({
     setVolume(val);
     if (isMuted && val > 0) setIsMuted(false);
     audioEngine.setVolume(val);
+    socketService.setMasterVolume(val);
   };
 
   const toggleMute = () => {
-    if (isMuted) {
-      setIsMuted(false);
-      audioEngine.setVolume(volume || 0.8);
-    } else {
-      setIsMuted(true);
+    const nextMute = !isMuted;
+    setIsMuted(nextMute);
+    if (nextMute) {
       audioEngine.setVolume(0);
+    } else {
+      audioEngine.setVolume(volume || 0.8);
     }
+    socketService.setMasterMute(nextMute);
   };
 
   const toggleSyncAudio = () => {
@@ -356,28 +377,33 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({
                 <Repeat className="w-4 h-4" />
               </button>
 
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5" title="Master Room Volume (controls all connected devices)">
                 <button
                   onClick={toggleMute}
-                  title={isMuted ? "Unmute" : "Mute"}
+                  title={isMuted ? "Unmute all devices" : "Mute all devices"}
                   className="p-1.5 text-slate-400 hover:text-white transition-colors"
                 >
                   {isMuted || volume === 0 ? (
                     <VolumeX className="w-4 h-4 text-red-400" />
                   ) : (
-                    <Volume2 className="w-4 h-4" />
+                    <Volume2 className="w-4 h-4 text-indigo-400" />
                   )}
                 </button>
-                <input
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.02}
-                  value={isMuted ? 0 : volume}
-                  onChange={handleVolumeChange}
-                  aria-label="Volume control"
-                  className="w-16 sm:w-20 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
-                />
+                <div className="flex flex-col">
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.02}
+                    value={isMuted ? 0 : volume}
+                    onChange={handleVolumeChange}
+                    aria-label="Master Room Volume control"
+                    className="w-16 sm:w-24 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                  />
+                  <span className="text-[9px] font-bold text-slate-500 text-center uppercase tracking-tighter">
+                    {isMuted ? "Muted" : `${Math.round(volume * 100)}% Room`}
+                  </span>
+                </div>
               </div>
             </div>
           </div>

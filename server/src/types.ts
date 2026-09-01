@@ -44,6 +44,8 @@ export interface PlaybackState {
   currentTime: number; // in seconds
   updatedAt: number;   // epoch ms when state was set
   duration: number;
+  masterVolume?: number;
+  isMuted?: boolean;
 }
 
 export interface Room {

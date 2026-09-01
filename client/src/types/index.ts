@@ -44,6 +44,8 @@ export interface PlaybackState {
   currentTime: number;
   updatedAt: number;
   duration: number;
+  masterVolume?: number;
+  isMuted?: boolean;
 }
 
 export interface ClientRoomView {

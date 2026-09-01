@@ -422,6 +422,25 @@ export class RoomManager {
     return true;
   }
 
+  public setMasterVolume(roomCode: string, volume: number): boolean {
+    const room = this.getRoom(roomCode);
+    if (!room) return false;
+    room.playbackState.masterVolume = Math.max(0, Math.min(1, volume));
+    room.playbackState.isMuted = false;
+    room.lastActiveAt = Date.now();
+    this.saveToDisk();
+    return true;
+  }
+
+  public setMasterMute(roomCode: string, isMuted: boolean): boolean {
+    const room = this.getRoom(roomCode);
+    if (!room) return false;
+    room.playbackState.isMuted = isMuted;
+    room.lastActiveAt = Date.now();
+    this.saveToDisk();
+    return true;
+  }
+
   public skipToNext(roomCode: string): { currentSong: Song | null; playbackState: PlaybackState } | null {
     const room = this.getRoom(roomCode);
     if (!room) return null;
