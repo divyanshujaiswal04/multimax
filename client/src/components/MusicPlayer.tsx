@@ -413,11 +413,16 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({
                     className="w-16 sm:w-24 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
                   />
                   <span className="text-[9px] font-bold text-slate-500 text-center uppercase tracking-tighter">
-                    {isMuted ? "Muted" : `${Math.round(volume * 100)}% Room`}
+                    {isMuted ? "Muted" : `${Math.round(volume * 100)}%`}
                   </span>
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Mobile Phone Volume Tip */}
+          <div className="sm:hidden text-center pt-1 text-[11px] text-slate-400 flex items-center justify-center gap-1.5 bg-white/5 py-1.5 px-3 rounded-xl border border-white/5">
+            <span>📱 Tip: Use the <strong>physical buttons on the side of your phone</strong> to lower or raise sound!</span>
           </div>
         </div>
       </div>
