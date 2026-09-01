@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Production Builds
+dist/
+*/dist/
+
+# Environment and secrets
+.env
+.env.local
+*.log
+
+# Server runtime data
+server/data/
+server/public_url.txt
+server/gen-tracks.js
+
+# OS & Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
