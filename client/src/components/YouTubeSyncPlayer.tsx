@@ -13,12 +13,16 @@ declare global {
 interface YouTubeSyncPlayerProps {
   song: Song | null;
   playbackState: PlaybackState;
+  volume: number;
+  isMuted: boolean;
   onEnded?: () => void;
 }
 
 export const YouTubeSyncPlayer: React.FC<YouTubeSyncPlayerProps> = ({
   song,
   playbackState,
+  volume,
+  isMuted,
   onEnded
 }) => {
   const playerRef = useRef<any>(null);
@@ -74,8 +78,14 @@ export const YouTubeSyncPlayer: React.FC<YouTubeSyncPlayerProps> = ({
           onReady: (event: any) => {
             setIsReady(true);
             try {
-              event.target.unMute();
-              event.target.setVolume(95);
+              const targetVol = Math.round((volume || 0.8) * 100);
+              if (isMuted) {
+                event.target.mute();
+                event.target.setVolume(0);
+              } else {
+                event.target.unMute();
+                event.target.setVolume(targetVol);
+              }
             } catch {}
           },
           onStateChange: (event: any) => {
@@ -93,7 +103,27 @@ export const YouTubeSyncPlayer: React.FC<YouTubeSyncPlayerProps> = ({
     }
   };
 
-  // 2. Continuous, frame-accurate playback sync across all devices
+  // 2. Real-time Volume & Mute Synchronization
+  useEffect(() => {
+    if (!isReady || !playerRef.current) return;
+    const player = playerRef.current;
+    try {
+      if (typeof player.setVolume === "function") {
+        if (isMuted || volume === 0) {
+          if (typeof player.mute === "function") player.mute();
+          player.setVolume(0);
+        } else {
+          if (typeof player.unMute === "function") player.unMute();
+          const targetVol = Math.max(0, Math.min(100, Math.round(volume * 100)));
+          player.setVolume(targetVol);
+        }
+      }
+    } catch (err) {
+      console.warn("Volume adjustment warning:", err);
+    }
+  }, [isReady, volume, isMuted]);
+
+  // 3. Continuous, frame-accurate playback sync across all devices
   useEffect(() => {
     if (!isReady || !playerRef.current || !song || song.source !== "youtube" || !song.videoId) {
       if (isReady && playerRef.current && typeof playerRef.current.pauseVideo === "function") {
@@ -123,8 +153,14 @@ export const YouTubeSyncPlayer: React.FC<YouTubeSyncPlayerProps> = ({
           videoId,
           startSeconds: Math.max(0, targetTime)
         });
-        player.unMute();
-        player.setVolume(95);
+        
+        if (isMuted || volume === 0) {
+          player.mute();
+          player.setVolume(0);
+        } else {
+          player.unMute();
+          player.setVolume(Math.round(volume * 100));
+        }
 
         if (!playbackState.isPlaying) {
           player.pauseVideo();
@@ -137,7 +173,7 @@ export const YouTubeSyncPlayer: React.FC<YouTubeSyncPlayerProps> = ({
 
     // B. Synchronize Play / Pause and Align Starting Timestamp
     try {
-      if (typeof player.isMuted === "function" && player.isMuted()) {
+      if (typeof player.isMuted === "function" && player.isMuted() && !isMuted && volume > 0) {
         setIsMutedByBrowser(true);
       }
 
@@ -148,7 +184,7 @@ export const YouTubeSyncPlayer: React.FC<YouTubeSyncPlayerProps> = ({
       if (playbackState.isPlaying) {
         if (state !== 1 && state !== 3) {
           player.seekTo(targetTime, true);
-          player.unMute();
+          if (!isMuted && volume > 0) player.unMute();
           player.playVideo();
         } else if (drift > 2.2) {
           player.seekTo(targetTime, true);
@@ -167,7 +203,7 @@ export const YouTubeSyncPlayer: React.FC<YouTubeSyncPlayerProps> = ({
     if (playerRef.current) {
       try {
         playerRef.current.unMute();
-        playerRef.current.setVolume(95);
+        playerRef.current.setVolume(Math.max(20, Math.round(volume * 100)));
         playerRef.current.playVideo();
         setIsMutedByBrowser(false);
       } catch (e) {

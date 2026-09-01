@@ -172,6 +172,8 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({
       <YouTubeSyncPlayer
         song={currentSong}
         playbackState={playbackState}
+        volume={volume}
+        isMuted={isMuted}
         onEnded={handleNext}
       />
 
