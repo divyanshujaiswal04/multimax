@@ -103,3 +103,16 @@ export async function getCatalog(query?: string): Promise<CatalogResponse> {
   }
   return res.json();
 }
+
+export async function searchMusic(query: string): Promise<Song[]> {
+  try {
+    const url = query ? `/api/search?q=${encodeURIComponent(query)}` : "/api/search";
+    const res = await fetch(url);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.results || [];
+  } catch (e) {
+    console.error("searchMusic error:", e);
+    return [];
+  }
+}

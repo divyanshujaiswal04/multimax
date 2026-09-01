@@ -7,6 +7,8 @@ export interface Song {
   url: string;      // direct audio stream URL
   artwork: string;  // cover image URL
   genre?: string;
+  source?: "local" | "youtube";
+  videoId?: string;
 }
 
 export interface QueueItem {

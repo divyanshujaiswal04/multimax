@@ -87,18 +87,13 @@ class AudioEngine {
   public syncPlayback(song: Song | null, playbackState: PlaybackState) {
     this.init();
 
-    if (!this.isSyncEnabled) {
+    if (!this.isSyncEnabled || !song || song.source === "youtube") {
       if (this.audio && !this.audio.paused) {
         this.audio.pause();
       }
-      return;
-    }
-
-    if (!song) {
-      if (this.audio && !this.audio.paused) {
-        this.audio.pause();
+      if (song?.source === "youtube") {
+        this.currentSong = song;
       }
-      this.currentSong = null;
       return;
     }
 

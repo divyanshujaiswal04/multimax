@@ -8,6 +8,8 @@ import { roomManager } from "./roomManager";
 import { setupSocketHandlers } from "./socketHandler";
 import { searchCatalog, AUDIO_CATALOG } from "./audioCatalog";
 import { getLocalNetworkIp, getPublicTunnelUrl } from "./networkHelper";
+import { searchYouTube, extractYouTubeVideoId, getYouTubeVideoInfo } from "./youtubeService";
+import { Song } from "./types";
 
 const app = express();
 const server = http.createServer(app);
@@ -133,7 +135,48 @@ app.get("/api/catalog", (req, res) => {
   });
 });
 
-// 6. Serve Local Royalty-Free Audio Files
+// 7. Universal Music Search API (Local tracks + Any YouTube song in the world)
+app.get("/api/search", async (req, res) => {
+  try {
+    const query = typeof req.query.q === "string" ? req.query.q.trim() : "";
+    if (!query) {
+      return res.json({
+        success: true,
+        count: AUDIO_CATALOG.length,
+        results: AUDIO_CATALOG
+      });
+    }
+
+    const results: Song[] = [];
+
+    // 1. Check if user pasted a direct YouTube URL
+    const directVideoId = extractYouTubeVideoId(query);
+    if (directVideoId) {
+      const info = await getYouTubeVideoInfo(directVideoId);
+      if (info) {
+        return res.json({ success: true, count: 1, results: [info] });
+      }
+    }
+
+    // 2. Include matching local tracks
+    const localMatches = searchCatalog(query);
+    results.push(...localMatches);
+
+    // 3. Search YouTube for ANY song (Bollywood, 90s, Pop, EDM, Rock, etc.)
+    const ytSongs = await searchYouTube(query, 18);
+    results.push(...ytSongs);
+
+    res.json({
+      success: true,
+      count: results.length,
+      results
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: "Search failed", details: err.message });
+  }
+});
+
+// 8. Serve Local Royalty-Free Audio Files
 const audioPath = path.resolve(__dirname, "../public/audio");
 app.use("/audio", express.static(audioPath));
 

@@ -17,6 +17,7 @@ import { PlaybackState, Song } from "../types";
 import { socketService } from "../services/socket";
 import { audioEngine } from "../services/audioEngine";
 import { AudioVisualizer } from "./AudioVisualizer";
+import { YouTubeSyncPlayer } from "./YouTubeSyncPlayer";
 
 interface MusicPlayerProps {
   currentSong: Song | null;
@@ -39,6 +40,7 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({
   const [shuffleOn, setShuffleOn] = useState<boolean>(false);
   const [repeatOn, setRepeatOn] = useState<boolean>(false);
   const [needsGesture, setNeedsGesture] = useState<boolean>(false);
+  const [showVideo, setShowVideo] = useState<boolean>(false);
 
   // Sync with audio engine events
   useEffect(() => {
@@ -172,6 +174,15 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({
           <span>Tap to sync audio and listen along on this device! 🔊</span>
         </div>
       )}
+
+      {/* YouTube Player Integration (Syncs video & audio across devices) */}
+      <YouTubeSyncPlayer
+        song={currentSong}
+        playbackState={playbackState}
+        showVideo={showVideo}
+        onToggleVideo={() => setShowVideo(!showVideo)}
+        onEnded={handleNext}
+      />
 
       <div className="relative z-10 flex flex-col md:flex-row items-center gap-6 md:gap-8">
         {/* Left: Spinning Disc / Artwork */}

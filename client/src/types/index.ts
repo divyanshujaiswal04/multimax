@@ -3,10 +3,12 @@ export interface Song {
   title: string;
   artist: string;
   album?: string;
-  duration: number;
-  url: string;
-  artwork: string;
+  duration: number; // in seconds
   genre?: string;
+  artwork?: string;
+  url: string; // stream URL or YouTube URL
+  source?: "local" | "youtube";
+  videoId?: string;
 }
 
 export interface QueueItem {
