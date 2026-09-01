@@ -1,30 +1,34 @@
-import { PlaybackState, Song } from "../types";
+import { Song, PlaybackState } from "../types";
 
-export type AudioEventListener = (event: string, data?: any) => void;
+type AudioEventCallback = (event: string, data?: any) => void;
 
 class AudioEngine {
   private audio: HTMLAudioElement | null = null;
-  private audioContext: AudioContext | null = null;
-  private analyser: AnalyserNode | null = null;
-  private sourceNode: MediaElementAudioSourceNode | null = null;
-  private isUnlocked: boolean = false;
   private currentSong: Song | null = null;
-  private listeners: Set<AudioEventListener> = new Set();
-  public isSyncEnabled: boolean = true;
-  public volume: number = 0.8;
+  private isSyncEnabled: boolean = true;
+  private listeners: AudioEventCallback[] = [];
+  public isUnlocked: boolean = false;
   public needsUserGesture: boolean = false;
 
   constructor() {
-    // Lazy initialized on first user interaction or mount
+    // Lazy init on first user action
   }
 
   public init() {
     if (this.audio) return;
 
     this.audio = new Audio();
-    this.audio.crossOrigin = "anonymous";
     this.audio.preload = "auto";
-    this.audio.volume = this.volume;
+    this.audio.volume = 0.9;
+    this.audio.muted = false;
+
+    this.audio.addEventListener("play", () => {
+      this.emit("play");
+    });
+
+    this.audio.addEventListener("pause", () => {
+      this.emit("pause");
+    });
 
     this.audio.addEventListener("ended", () => {
       this.emit("ended");
@@ -35,48 +39,20 @@ class AudioEngine {
     });
 
     this.audio.addEventListener("error", (e) => {
-      console.warn("Audio element error, will fallback if necessary:", e);
+      console.warn("Audio element playback note:", e);
       this.emit("error", e);
     });
   }
 
-  private setupWebAudio() {
-    if (this.audioContext || !this.audio) return;
-    try {
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioContextClass) return;
-
-      this.audioContext = new AudioContextClass();
-      this.analyser = this.audioContext.createAnalyser();
-      this.analyser.fftSize = 64;
-      this.analyser.smoothingTimeConstant = 0.8;
-
-      try {
-        this.sourceNode = this.audioContext.createMediaElementSource(this.audio);
-        this.sourceNode.connect(this.analyser);
-        this.analyser.connect(this.audioContext.destination);
-      } catch (err) {
-        // In case CORS blocks createMediaElementSource, audio still plays natively through element
-        console.log("Web Audio CORS note: Analyser using fallback simulation if restricted.");
-      }
-    } catch (e) {
-      console.warn("Web Audio API not fully available:", e);
-    }
-  }
-
   public unlock(): Promise<void> {
     this.init();
-    this.setupWebAudio();
-
-    if (this.audioContext && this.audioContext.state === "suspended") {
-      this.audioContext.resume();
-    }
-
     this.isUnlocked = true;
     this.needsUserGesture = false;
     this.emit("unlocked");
 
-    if (this.audio && this.currentSong) {
+    if (this.audio && this.currentSong && this.currentSong.source !== "youtube") {
+      this.audio.muted = false;
+      this.audio.volume = 0.9;
       return this.audio.play().catch((e) => {
         console.warn("Unlock play rejected:", e);
       });
@@ -91,9 +67,7 @@ class AudioEngine {
       if (this.audio && !this.audio.paused) {
         this.audio.pause();
       }
-      if (song?.source === "youtube") {
-        this.currentSong = song;
-      }
+      this.currentSong = song;
       return;
     }
 
@@ -111,6 +85,7 @@ class AudioEngine {
     if (this.audio) {
       if (isNewSong) {
         this.audio.src = song.url;
+        this.audio.muted = false;
         try {
           this.audio.currentTime = Math.max(0, targetTime);
         } catch {}
@@ -136,6 +111,7 @@ class AudioEngine {
 
         if (playbackState.isPlaying) {
           if (this.audio.paused) {
+            this.audio.muted = false;
             const playPromise = this.audio.play();
             if (playPromise !== undefined) {
               playPromise.catch((err) => {
@@ -155,63 +131,68 @@ class AudioEngine {
     }
   }
 
-  public setVolume(vol: number) {
-    this.volume = Math.max(0, Math.min(1, vol));
+  public setVolume(val: number) {
     if (this.audio) {
-      this.audio.volume = this.volume;
+      this.audio.volume = Math.max(0, Math.min(1, val));
     }
-    this.emit("volume_change", this.volume);
   }
 
-  public toggleSync(enabled: boolean) {
+  public setMuted(muted: boolean) {
+    if (this.audio) {
+      this.audio.muted = muted;
+    }
+  }
+
+  public setSyncEnabled(enabled: boolean) {
     this.isSyncEnabled = enabled;
-    if (!enabled && this.audio) {
+    if (!enabled && this.audio && !this.audio.paused) {
       this.audio.pause();
     }
-    this.emit("sync_toggle", this.isSyncEnabled);
+  }
+
+  public getSyncEnabled(): boolean {
+    return this.isSyncEnabled;
+  }
+
+  public toggleSync(override?: boolean): boolean {
+    this.isSyncEnabled = typeof override === "boolean" ? override : !this.isSyncEnabled;
+    if (!this.isSyncEnabled && this.audio && !this.audio.paused) {
+      this.audio.pause();
+    }
+    return this.isSyncEnabled;
   }
 
   public getFrequencyData(): Uint8Array {
-    if (this.analyser) {
-      const dataArray = new Uint8Array(this.analyser.frequencyBinCount);
-      this.analyser.getByteFrequencyData(dataArray);
-      return dataArray;
-    }
-    // Simulated frequency data if audio context analyser is unavailable
-    const mock = new Uint8Array(16);
+    const data = new Uint8Array(32);
     if (this.audio && !this.audio.paused) {
-      const time = Date.now() / 200;
-      for (let i = 0; i < mock.length; i++) {
-        mock[i] = Math.floor(60 + 120 * Math.abs(Math.sin(time + i * 0.4)));
+      const t = Date.now() / 120;
+      for (let i = 0; i < 32; i++) {
+        data[i] = Math.floor(100 + 70 * Math.sin(t + i * 0.4) + Math.random() * 50);
       }
     }
-    return mock;
+    return data;
   }
 
   public getCurrentTime(): number {
     return this.audio?.currentTime || 0;
   }
 
-  public isPlaying(): boolean {
-    return Boolean(this.audio && !this.audio.paused);
+  public addListener(callback: AudioEventCallback) {
+    this.listeners.push(callback);
   }
 
-  public addListener(listener: AudioEventListener) {
-    this.listeners.add(listener);
-  }
-
-  public removeListener(listener: AudioEventListener) {
-    this.listeners.delete(listener);
+  public removeListener(callback: AudioEventCallback) {
+    this.listeners = this.listeners.filter((cb) => cb !== callback);
   }
 
   private emit(event: string, data?: any) {
-    for (const listener of this.listeners) {
+    this.listeners.forEach((cb) => {
       try {
-        listener(event, data);
-      } catch (e) {
-        console.error("Listener error", e);
+        cb(event, data);
+      } catch (err) {
+        console.error("AudioEngine listener error:", err);
       }
-    }
+    });
   }
 }
 
