@@ -11,7 +11,8 @@ import {
   Radio, 
   Disc3,
   Music,
-  Headphones
+  Headphones,
+  Plus
 } from "lucide-react";
 import { PlaybackState, Song } from "../types";
 import { socketService } from "../services/socket";
@@ -23,14 +24,16 @@ interface MusicPlayerProps {
   currentSong: Song | null;
   playbackState: PlaybackState;
   isHost: boolean;
-  canControlPlayback: boolean;
+  canControlPlayback?: boolean;
+  onOpenAddMusic?: () => void;
 }
 
 export const MusicPlayer: React.FC<MusicPlayerProps> = ({
   currentSong,
   playbackState,
   isHost,
-  canControlPlayback
+  canControlPlayback = true,
+  onOpenAddMusic
 }) => {
   const [localProgress, setLocalProgress] = useState<number>(playbackState.currentTime);
   const [isScrubbing, setIsScrubbing] = useState<boolean>(false);
@@ -52,9 +55,7 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({
     };
 
     audioEngine.addListener(handleAudioEvent);
-    return () => {
-      audioEngine.removeListener(handleAudioEvent);
-    };
+    return () => audioEngine.removeListener(handleAudioEvent);
   }, []);
 
   // Update progress timer smoothly when playing
@@ -89,7 +90,6 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({
     if (needsGesture) {
       audioEngine.unlock();
     }
-    if (!canControlPlayback) return;
     if (playbackState.isPlaying) {
       socketService.pause();
     } else {
@@ -104,21 +104,15 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({
 
   const handleSeekCommit = () => {
     setIsScrubbing(false);
-    if (canControlPlayback) {
-      socketService.seek(localProgress);
-    }
+    socketService.seek(localProgress);
   };
 
   const handleNext = () => {
-    if (canControlPlayback) {
-      socketService.skip();
-    }
+    socketService.skip();
   };
 
   const handlePrevious = () => {
-    if (canControlPlayback) {
-      socketService.previous();
-    }
+    socketService.previous();
   };
 
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -238,8 +232,19 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({
               </p>
             </div>
 
-            {/* Sync Toggle Button */}
+            {/* Action Buttons: Add Music & Sync */}
             <div className="flex items-center gap-2">
+              {onOpenAddMusic && (
+                <button
+                  onClick={onOpenAddMusic}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:to-purple-600 text-white font-bold text-xs shadow-lg shadow-indigo-500/25 active:scale-95 transition-all"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Add Music</span>
+                </button>
+              )}
+
+              {/* Sync Toggle Button */}
               <button
                 onClick={toggleSyncAudio}
                 title={syncAudio ? "Playing audio on this device" : "Device is muted / Remote mode"}
@@ -274,9 +279,8 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({
                 onTouchStart={() => setIsScrubbing(true)}
                 onMouseUp={handleSeekCommit}
                 onTouchEnd={handleSeekCommit}
-                disabled={!canControlPlayback}
                 aria-label="Seek track"
-                className="w-full h-2 rounded-lg bg-slate-800 appearance-none cursor-pointer accent-indigo-500 disabled:cursor-not-allowed transition-all"
+                className="w-full h-2 rounded-lg bg-slate-800 appearance-none cursor-pointer accent-indigo-500 transition-all"
                 style={{
                   background: `linear-gradient(to right, #6366f1 0%, #a855f7 ${progressPercent}%, #1e2235 ${progressPercent}%, #1e2235 100%)`
                 }}
@@ -307,22 +311,20 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({
             <div className="flex items-center gap-3 sm:gap-4 order-1 sm:order-2">
               <button
                 onClick={handlePrevious}
-                disabled={!canControlPlayback}
                 title="Previous track"
-                className="p-2.5 rounded-full text-slate-300 hover:text-white hover:bg-white/10 active:scale-95 disabled:opacity-40 disabled:hover:bg-transparent transition-all"
+                className="p-2.5 rounded-full text-slate-300 hover:text-white hover:bg-white/10 active:scale-95 transition-all"
               >
                 <SkipBack className="w-5 h-5 fill-current" />
               </button>
 
               <button
                 onClick={handlePlayPause}
-                disabled={!canControlPlayback && !needsGesture}
                 title={playbackState.isPlaying ? "Pause" : "Play"}
                 className={`p-4 rounded-full text-white shadow-xl transition-all transform active:scale-90 ${
                   playbackState.isPlaying
                     ? "bg-gradient-to-tr from-indigo-600 to-purple-600 shadow-indigo-500/30 hover:scale-105"
                     : "bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 shadow-purple-500/40 hover:scale-105"
-                } disabled:opacity-50 disabled:cursor-not-allowed`}
+                }`}
               >
                 {playbackState.isPlaying ? (
                   <Pause className="w-6 h-6 fill-current" />
@@ -333,9 +335,8 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({
 
               <button
                 onClick={handleNext}
-                disabled={!canControlPlayback}
                 title="Next track"
-                className="p-2.5 rounded-full text-slate-300 hover:text-white hover:bg-white/10 active:scale-95 disabled:opacity-40 disabled:hover:bg-transparent transition-all"
+                className="p-2.5 rounded-full text-slate-300 hover:text-white hover:bg-white/10 active:scale-95 transition-all"
               >
                 <SkipForward className="w-5 h-5 fill-current" />
               </button>

@@ -14,7 +14,8 @@ import {
   AlertCircle, 
   Loader2, 
   WifiOff, 
-  Crown
+  Crown,
+  Plus
 } from "lucide-react";
 import { ClientRoomView, Guest, PlaybackState, Song } from "../types";
 import { socketService } from "../services/socket";
@@ -255,6 +256,15 @@ export const RoomDashboardPage: React.FC = () => {
                 <Copy className="w-3 h-3 text-slate-400 ml-1" />
               )}
             </div>
+
+            {/* Quick Add Music Button in Top Bar */}
+            <button
+              onClick={() => setIsAddMusicOpen(true)}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:to-purple-600 text-white font-bold text-xs shadow-lg shadow-indigo-500/25 active:scale-95 transition-all"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Add Music</span>
+            </button>
           </div>
 
           {/* Right: Quick Actions */}
@@ -314,7 +324,8 @@ export const RoomDashboardPage: React.FC = () => {
               currentSong={room.currentSong}
               playbackState={room.playbackState}
               isHost={isHost}
-              canControlPlayback={canControlPlayback}
+              canControlPlayback={true}
+              onOpenAddMusic={() => setIsAddMusicOpen(true)}
             />
 
             {/* Quick Guest Bar */}

@@ -26,16 +26,18 @@ export const YouTubeSyncPlayer: React.FC<YouTubeSyncPlayerProps> = ({
   const [isMutedByBrowser, setIsMutedByBrowser] = useState(false);
   const currentVideoIdRef = useRef<string | null>(null);
 
-  // 1. Load YouTube IFrame API script
+  // 1. Safe YouTube IFrame API script loader
   useEffect(() => {
     if (window.YT && window.YT.Player) {
       initPlayer();
       return;
     }
 
-    const prevCallback = window.onYouTubeIframeAPIReady;
+    const prev = window.onYouTubeIframeAPIReady;
     window.onYouTubeIframeAPIReady = () => {
-      if (prevCallback) prevCallback();
+      if (typeof prev === "function" && prev !== window.onYouTubeIframeAPIReady) {
+        try { prev(); } catch {}
+      }
       initPlayer();
     };
 
@@ -43,13 +45,17 @@ export const YouTubeSyncPlayer: React.FC<YouTubeSyncPlayerProps> = ({
       const tag = document.createElement("script");
       tag.id = "yt-iframe-script";
       tag.src = "https://www.youtube.com/iframe_api";
-      const firstScriptTag = document.getElementsByTagName("script")[0];
-      firstScriptTag?.parentNode?.insertBefore(tag, firstScriptTag);
+      document.head.appendChild(tag);
     }
   }, []);
 
   const initPlayer = () => {
     if (playerRef.current) return;
+    const el = document.getElementById("multimax-yt-iframe");
+    if (!el) {
+      setTimeout(initPlayer, 150);
+      return;
+    }
 
     try {
       playerRef.current = new window.YT.Player("multimax-yt-iframe", {
@@ -73,19 +79,21 @@ export const YouTubeSyncPlayer: React.FC<YouTubeSyncPlayerProps> = ({
             } catch {}
           },
           onStateChange: (event: any) => {
-            // YT.PlayerState.ENDED = 0
             if (event.data === 0 && onEnded) {
               onEnded();
             }
+          },
+          onError: (e: any) => {
+            console.warn("YouTube player warning:", e);
           }
         }
       });
     } catch (err) {
-      console.warn("YouTube player init:", err);
+      console.warn("YouTube player init error:", err);
     }
   };
 
-  // 2. Synchronized playback across all devices (Precise NTP aligned timing!)
+  // 2. Continuous, frame-accurate playback sync across all devices
   useEffect(() => {
     if (!isReady || !playerRef.current || !song || song.source !== "youtube" || !song.videoId) {
       if (isReady && playerRef.current && typeof playerRef.current.pauseVideo === "function") {
@@ -138,13 +146,11 @@ export const YouTubeSyncPlayer: React.FC<YouTubeSyncPlayerProps> = ({
       const drift = Math.abs(currentPos - targetTime);
 
       if (playbackState.isPlaying) {
-        // If player is not yet playing, align to target timestamp and play!
         if (state !== 1 && state !== 3) {
           player.seekTo(targetTime, true);
           player.unMute();
           player.playVideo();
         } else if (drift > 2.2) {
-          // If a device drifts behind by >2.2s, realign to stay in lockstep
           player.seekTo(targetTime, true);
         }
       } else {
@@ -170,11 +176,9 @@ export const YouTubeSyncPlayer: React.FC<YouTubeSyncPlayerProps> = ({
     }
   };
 
-  if (!song || song.source !== "youtube") return null;
-
   return (
     <div className="w-full relative">
-      {/* Tap to Unmute Banner if mobile browser auto-muted audio */}
+      {/* Tap to Unmute Banner if browser auto-muted audio */}
       {isMutedByBrowser && (
         <div 
           onClick={handleUnmute}
@@ -188,7 +192,7 @@ export const YouTubeSyncPlayer: React.FC<YouTubeSyncPlayerProps> = ({
         </div>
       )}
 
-      {/* Invisible YouTube Audio Streamer - Pure Audio Experience! */}
+      {/* Invisible YouTube Audio Streamer - Always present in DOM */}
       <div 
         className="fixed -bottom-96 -right-96 w-[200px] h-[200px] opacity-0 pointer-events-none overflow-hidden" 
         aria-hidden="true"

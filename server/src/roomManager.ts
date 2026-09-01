@@ -366,7 +366,17 @@ export class RoomManager {
 
   public play(roomCode: string): boolean {
     const room = this.getRoom(roomCode);
-    if (!room || !room.currentSong) return false;
+    if (!room) return false;
+
+    // If no track is currently set, pick first track from queue or catalog
+    if (!room.currentSong) {
+      if (room.queue.length > 0) {
+        const nextItem = room.queue.shift()!;
+        room.currentSong = nextItem.song;
+      } else {
+        room.currentSong = AUDIO_CATALOG[0];
+      }
+    }
 
     const current = this.calculateCurrentPlaybackState(room);
     room.playbackState = {
