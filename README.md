@@ -2,8 +2,12 @@
 
 > **One Room. Every Device. One Beat.**
 
-MultiMax is a modern, production-quality, real-time collaborative music room platform. It connects phones, tablets, and laptops to the same synchronized music room **without requiring an account, sign-up, email, or password**.
+### 🌐 [▶ Click Here to Open MultiMax Live Web App](https://males-yale-walker-impose.trycloudflare.com)
 
+**Live Worldwide Public Link**: [https://males-yale-walker-impose.trycloudflare.com](https://males-yale-walker-impose.trycloudflare.com)  
+*Anyone with this link can create a music room or join from any phone, computer, or tablet worldwide — zero installation, zero login required!*
+
+[![Live Demo](https://img.shields.io/badge/Live_App-Open_MultiMax-10b981?style=for-the-badge&logo=googlechrome&logoColor=white)](https://males-yale-walker-impose.trycloudflare.com)
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)](https://reactjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.4-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4-38B2AC?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
