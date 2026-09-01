@@ -86,12 +86,12 @@ class SocketService {
     this.getSocket().emit("playback_seek", { time });
   }
 
-  public setMasterVolume(volume: number) {
-    this.getSocket().emit("playback_volume", { volume });
+  public setMasterVolume(volume: number, roomCode?: string) {
+    this.getSocket().emit("playback_volume", { volume, roomCode });
   }
 
-  public setMasterMute(isMuted: boolean) {
-    this.getSocket().emit("playback_mute", { isMuted });
+  public setMasterMute(isMuted: boolean, roomCode?: string) {
+    this.getSocket().emit("playback_mute", { isMuted, roomCode });
   }
 
   public skip() {

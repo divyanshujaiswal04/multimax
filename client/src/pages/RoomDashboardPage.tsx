@@ -325,6 +325,7 @@ export const RoomDashboardPage: React.FC = () => {
               playbackState={room.playbackState}
               isHost={isHost}
               canControlPlayback={true}
+              roomCode={cleanCode}
               onOpenAddMusic={() => setIsAddMusicOpen(true)}
             />
 

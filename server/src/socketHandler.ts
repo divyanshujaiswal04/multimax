@@ -193,23 +193,28 @@ export function setupSocketHandlers(io: Server) {
       }
     });
 
-    socket.on("playback_volume", (payload: { volume: number }) => {
-      if (!currentRoomCode || typeof payload.volume !== "number") return;
-      roomManager.setMasterVolume(currentRoomCode, payload.volume);
-      io.to(`room_${currentRoomCode}`).emit("master_volume_updated", {
+    socket.on("playback_volume", (payload: { volume: number; roomCode?: string }) => {
+      const code = payload.roomCode ? roomManager.normalizeCode(payload.roomCode) : currentRoomCode;
+      if (!code || typeof payload.volume !== "number") return;
+      roomManager.setMasterVolume(code, payload.volume);
+      io.to(`room_${code}`).emit("master_volume_updated", {
         volume: payload.volume,
         isMuted: false
       });
+      broadcastRoomUpdate(code);
     });
 
-    socket.on("playback_mute", (payload: { isMuted: boolean }) => {
-      if (!currentRoomCode) return;
-      roomManager.setMasterMute(currentRoomCode, payload.isMuted);
-      const room = roomManager.getRoom(currentRoomCode);
-      io.to(`room_${currentRoomCode}`).emit("master_volume_updated", {
-        volume: room?.playbackState.masterVolume ?? 0.8,
+    socket.on("playback_mute", (payload: { isMuted: boolean; roomCode?: string }) => {
+      const code = payload.roomCode ? roomManager.normalizeCode(payload.roomCode) : currentRoomCode;
+      if (!code) return;
+      roomManager.setMasterMute(code, payload.isMuted);
+      const room = roomManager.getRoom(code);
+      const vol = room?.playbackState.masterVolume ?? 0.8;
+      io.to(`room_${code}`).emit("master_volume_updated", {
+        volume: vol,
         isMuted: payload.isMuted
       });
+      broadcastRoomUpdate(code);
     });
 
     socket.on("playback_skip", () => {

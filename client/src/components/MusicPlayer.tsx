@@ -25,6 +25,7 @@ interface MusicPlayerProps {
   playbackState: PlaybackState;
   isHost: boolean;
   canControlPlayback?: boolean;
+  roomCode?: string;
   onOpenAddMusic?: () => void;
 }
 
@@ -33,16 +34,27 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({
   playbackState,
   isHost,
   canControlPlayback = true,
+  roomCode,
   onOpenAddMusic
 }) => {
   const [localProgress, setLocalProgress] = useState<number>(playbackState.currentTime);
   const [isScrubbing, setIsScrubbing] = useState<boolean>(false);
-  const [volume, setVolume] = useState<number>(0.8);
-  const [isMuted, setIsMuted] = useState<boolean>(false);
+  const [volume, setVolume] = useState<number>(playbackState.masterVolume ?? 0.8);
+  const [isMuted, setIsMuted] = useState<boolean>(playbackState.isMuted ?? false);
   const [syncAudio, setSyncAudio] = useState<boolean>(true);
   const [shuffleOn, setShuffleOn] = useState<boolean>(false);
   const [repeatOn, setRepeatOn] = useState<boolean>(false);
   const [needsGesture, setNeedsGesture] = useState<boolean>(false);
+
+  // Sync volume from server playbackState
+  useEffect(() => {
+    if (typeof playbackState.masterVolume === "number") {
+      setVolume(playbackState.masterVolume);
+    }
+    if (typeof playbackState.isMuted === "boolean") {
+      setIsMuted(playbackState.isMuted);
+    }
+  }, [playbackState.masterVolume, playbackState.isMuted]);
 
   // Sync with audio engine events
   useEffect(() => {
@@ -139,7 +151,7 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({
     setVolume(val);
     if (isMuted && val > 0) setIsMuted(false);
     audioEngine.setVolume(val);
-    socketService.setMasterVolume(val);
+    socketService.setMasterVolume(val, roomCode);
   };
 
   const toggleMute = () => {
@@ -150,7 +162,7 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({
     } else {
       audioEngine.setVolume(volume || 0.8);
     }
-    socketService.setMasterMute(nextMute);
+    socketService.setMasterMute(nextMute, roomCode);
   };
 
   const toggleSyncAudio = () => {
