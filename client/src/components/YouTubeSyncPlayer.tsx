@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Song, PlaybackState } from "../types";
+import { socketService } from "../services/socket";
 import { Volume2 } from "lucide-react";
 
 declare global {
@@ -84,7 +85,7 @@ export const YouTubeSyncPlayer: React.FC<YouTubeSyncPlayerProps> = ({
     }
   };
 
-  // 2. Smooth playback sync (Zero repeated seeks!)
+  // 2. Synchronized playback across all devices (Precise NTP aligned timing!)
   useEffect(() => {
     if (!isReady || !playerRef.current || !song || song.source !== "youtube" || !song.videoId) {
       if (isReady && playerRef.current && typeof playerRef.current.pauseVideo === "function") {
@@ -98,15 +99,15 @@ export const YouTubeSyncPlayer: React.FC<YouTubeSyncPlayerProps> = ({
     const player = playerRef.current;
     const videoId = song.videoId;
 
-    // Expected server playback time
-    const now = Date.now();
+    // Use NTP server-synchronized time across all devices
+    const now = socketService.getServerTime();
     let targetTime = playbackState.currentTime;
     if (playbackState.isPlaying) {
       const elapsed = (now - playbackState.updatedAt) / 1000;
       targetTime = Math.min(playbackState.currentTime + elapsed, playbackState.duration || 600);
     }
 
-    // A. Video changed: Load new video and start ONCE
+    // A. Video changed: Load new track and seek to target time ONCE
     if (currentVideoIdRef.current !== videoId) {
       currentVideoIdRef.current = videoId;
       try {
@@ -126,37 +127,35 @@ export const YouTubeSyncPlayer: React.FC<YouTubeSyncPlayerProps> = ({
       return;
     }
 
-    // B. Handle Play / Pause state transitions without seeking
+    // B. Synchronize Play / Pause and Align Starting Timestamp
     try {
       if (typeof player.isMuted === "function" && player.isMuted()) {
         setIsMutedByBrowser(true);
       }
 
       const state = typeof player.getPlayerState === "function" ? player.getPlayerState() : -1;
-      // 1 = PLAYING, 2 = PAUSED, 3 = BUFFERING
+      const currentPos = typeof player.getCurrentTime === "function" ? player.getCurrentTime() : 0;
+      const drift = Math.abs(currentPos - targetTime);
 
       if (playbackState.isPlaying) {
+        // If player is not yet playing, align to target timestamp and play!
         if (state !== 1 && state !== 3) {
+          player.seekTo(targetTime, true);
           player.unMute();
           player.playVideo();
+        } else if (drift > 2.2) {
+          // If a device drifts behind by >2.2s, realign to stay in lockstep
+          player.seekTo(targetTime, true);
         }
       } else {
         if (state === 1) {
           player.pauseVideo();
         }
       }
-
-      // C. ONLY seek if drift is HUGE (> 6.0s)
-      const currentPos = typeof player.getCurrentTime === "function" ? player.getCurrentTime() : 0;
-      const drift = Math.abs(currentPos - targetTime);
-
-      if (drift > 6.0) {
-        player.seekTo(targetTime, true);
-      }
     } catch {
       setIsMutedByBrowser(true);
     }
-  }, [isReady, song?.videoId, playbackState.isPlaying, playbackState.currentTime]);
+  }, [isReady, song?.videoId, playbackState.isPlaying, playbackState.currentTime, playbackState.updatedAt]);
 
   const handleUnmute = () => {
     if (playerRef.current) {
@@ -175,7 +174,7 @@ export const YouTubeSyncPlayer: React.FC<YouTubeSyncPlayerProps> = ({
 
   return (
     <div className="w-full relative">
-      {/* Tap to Unmute Banner if browser auto-muted audio */}
+      {/* Tap to Unmute Banner if mobile browser auto-muted audio */}
       {isMutedByBrowser && (
         <div 
           onClick={handleUnmute}
@@ -183,7 +182,7 @@ export const YouTubeSyncPlayer: React.FC<YouTubeSyncPlayerProps> = ({
         >
           <div className="flex items-center gap-2">
             <Volume2 className="w-5 h-5 animate-pulse text-yellow-300" />
-            <span>🔊 Audio is muted by your browser. TAP HERE TO HEAR MUSIC!</span>
+            <span>🔊 Sound is muted by your browser. TAP HERE TO SYNC AUDIO!</span>
           </div>
           <span className="px-3 py-1 bg-white/20 rounded-xl text-xs">Unmute Now</span>
         </div>

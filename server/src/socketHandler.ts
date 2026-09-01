@@ -100,6 +100,14 @@ export function setupSocketHandlers(io: Server) {
       }
     });
 
+    // 4. NTP Clock Synchronization for Frame-Accurate Playback
+    socket.on("time_sync", (data: { clientTime: number }) => {
+      socket.emit("time_sync_response", {
+        clientTime: data.clientTime,
+        serverTime: Date.now()
+      });
+    });
+
     // 5. Playback Controls
     socket.on("play_now", (payload: { song: Song }) => {
       if (!currentRoomCode || !payload.song) return;

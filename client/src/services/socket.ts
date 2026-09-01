@@ -3,10 +3,10 @@ import { ClientRoomView, Guest, PlaybackState, QueueItem, Song } from "../types"
 
 class SocketService {
   private socket: Socket | null = null;
+  private serverTimeOffset: number = 0;
 
   public connect(): Socket {
     if (!this.socket) {
-      // In development Vite proxies /socket.io to backend on port 5000
       this.socket = io({
         autoConnect: true,
         reconnection: true,
@@ -15,7 +15,13 @@ class SocketService {
       });
 
       this.socket.on("connect", () => {
-        console.log("⚡ Connected to MultiMax socket server:", this.socket?.id);
+        this.syncTime();
+      });
+
+      this.socket.on("time_sync_response", (data: { clientTime: number; serverTime: number }) => {
+        const now = Date.now();
+        const rtt = now - data.clientTime;
+        this.serverTimeOffset = data.serverTime - (data.clientTime + rtt / 2);
       });
 
       this.socket.on("disconnect", (reason) => {
@@ -23,6 +29,16 @@ class SocketService {
       });
     }
     return this.socket;
+  }
+
+  public syncTime() {
+    if (this.socket && this.socket.connected) {
+      this.socket.emit("time_sync", { clientTime: Date.now() });
+    }
+  }
+
+  public getServerTime(): number {
+    return Date.now() + this.serverTimeOffset;
   }
 
   public getSocket(): Socket {
