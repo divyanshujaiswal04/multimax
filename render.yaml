@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: multimax
+    name: multimax-music
     runtime: node
     plan: free
     buildCommand: npm run build
