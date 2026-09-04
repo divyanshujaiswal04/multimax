@@ -2,18 +2,33 @@
 
 > **One Room. Every Device. One Beat.**
 
-### 🌐 [▶ Click Here to Open MultiMax Live Web App](https://males-yale-walker-impose.trycloudflare.com)
+### 🌐 [▶ Click Here to Open MultiMax Live Web App](https://cradle-framing-fleet-resort.trycloudflare.com)
 
-**Live Worldwide Public Link**: [https://males-yale-walker-impose.trycloudflare.com](https://males-yale-walker-impose.trycloudflare.com)  
+**Current Live Public Link**: [https://cradle-framing-fleet-resort.trycloudflare.com](https://cradle-framing-fleet-resort.trycloudflare.com)  
 *Anyone with this link can create a music room or join from any phone, computer, or tablet worldwide — zero installation, zero login required!*
 
-[![Live Demo](https://img.shields.io/badge/Live_App-Open_MultiMax-10b981?style=for-the-badge&logo=googlechrome&logoColor=white)](https://males-yale-walker-impose.trycloudflare.com)
+[![Live Demo](https://img.shields.io/badge/Live_App-Open_MultiMax-10b981?style=for-the-badge&logo=googlechrome&logoColor=white)](https://cradle-framing-fleet-resort.trycloudflare.com)
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy)
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)](https://reactjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.4-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4-38B2AC?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 [![Node.js](https://img.shields.io/badge/Node.js-20-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![Socket.IO](https://img.shields.io/badge/Socket.IO-4.7-010101?logo=socket.io&logoColor=white)](https://socket.io/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+---
+
+## ☁️ Permanent 24/7 Free Hosting (Always Online)
+
+To keep MultiMax online 24/7 forever (even when your computer is turned off):
+
+1. Go to [Render.com](https://render.com) and create a free account (sign in with GitHub).
+2. Click **New +** → **Web Service** → Connect your repository: `divyanshujaiswal04/multimax`.
+3. Set:
+   - **Build Command**: `npm run build`
+   - **Start Command**: `npm start`
+4. Click **Deploy Web Service**.
+5. You'll get your own permanent link (e.g. `https://multimax.onrender.com`) that never expires!
 
 ---
 

@@ -3,6 +3,10 @@ import fs from "fs";
 import path from "path";
 
 export function getPublicTunnelUrl(): string | null {
+  if (process.env.RENDER_EXTERNAL_URL) return process.env.RENDER_EXTERNAL_URL;
+  if (process.env.PUBLIC_URL) return process.env.PUBLIC_URL;
+  if (process.env.RAILWAY_STATIC_URL) return `https://${process.env.RAILWAY_STATIC_URL}`;
+
   try {
     const p = path.resolve(__dirname, "../public_url.txt");
     if (fs.existsSync(p)) {
