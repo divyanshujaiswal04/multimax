@@ -14,18 +14,55 @@ import { Song } from "./types";
 const app = express();
 const server = http.createServer(app);
 
-// Enable CORS
+// Secure CORS Origin Validator
+const isAllowedOrigin = (origin: string | undefined): boolean => {
+  if (!origin) return true; // Same-origin, server-to-server, or local requests
+  try {
+    const url = new URL(origin);
+    const host = url.hostname.toLowerCase();
+    if (
+      host === "localhost" ||
+      host === "127.0.0.1" ||
+      host.endsWith(".onrender.com") ||
+      host.endsWith(".trycloudflare.com") ||
+      host.startsWith("192.168.") ||
+      host.startsWith("10.") ||
+      /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(host)
+    ) {
+      return true;
+    }
+    if (process.env.ALLOWED_ORIGINS) {
+      const custom = process.env.ALLOWED_ORIGINS.split(",").map(s => s.trim().toLowerCase());
+      if (custom.includes(host) || custom.includes(origin.toLowerCase())) return true;
+    }
+  } catch {}
+  return false;
+};
+
+// Enable Secure CORS
 app.use(cors({
-  origin: "*",
+  origin: (origin, callback) => {
+    if (isAllowedOrigin(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("CORS not allowed for this origin"));
+    }
+  },
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
 }));
 
 app.use(express.json());
 
-// Initialize Socket.IO with CORS & both WebSocket and Polling transports
+// Initialize Socket.IO with Secure CORS & both WebSocket and Polling transports
 const io = new Server(server, {
   cors: {
-    origin: "*",
+    origin: (origin, callback) => {
+      if (isAllowedOrigin(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("CORS not allowed for this origin"));
+      }
+    },
     methods: ["GET", "POST"]
   },
   transports: ["polling", "websocket"],

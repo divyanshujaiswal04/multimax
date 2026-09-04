@@ -194,27 +194,36 @@ export function setupSocketHandlers(io: Server) {
     });
 
     socket.on("playback_volume", (payload: { volume: number; roomCode?: string }) => {
-      const code = payload.roomCode ? roomManager.normalizeCode(payload.roomCode) : currentRoomCode;
-      if (!code || typeof payload.volume !== "number") return;
-      roomManager.setMasterVolume(code, payload.volume);
-      io.to(`room_${code}`).emit("master_volume_updated", {
-        volume: payload.volume,
+      if (!currentRoomCode || typeof payload.volume !== "number" || isNaN(payload.volume)) return;
+      // Security: Strictly enforce that sockets can only control their authenticated room
+      if (payload.roomCode && roomManager.normalizeCode(payload.roomCode) !== currentRoomCode) {
+        return;
+      }
+
+      const clampedVol = Math.max(0, Math.min(1, payload.volume));
+      roomManager.setMasterVolume(currentRoomCode, clampedVol);
+      io.to(`room_${currentRoomCode}`).emit("master_volume_updated", {
+        volume: clampedVol,
         isMuted: false
       });
-      broadcastRoomUpdate(code);
+      broadcastRoomUpdate(currentRoomCode);
     });
 
     socket.on("playback_mute", (payload: { isMuted: boolean; roomCode?: string }) => {
-      const code = payload.roomCode ? roomManager.normalizeCode(payload.roomCode) : currentRoomCode;
-      if (!code) return;
-      roomManager.setMasterMute(code, payload.isMuted);
-      const room = roomManager.getRoom(code);
+      if (!currentRoomCode || typeof payload.isMuted !== "boolean") return;
+      // Security: Strictly enforce that sockets can only control their authenticated room
+      if (payload.roomCode && roomManager.normalizeCode(payload.roomCode) !== currentRoomCode) {
+        return;
+      }
+
+      roomManager.setMasterMute(currentRoomCode, payload.isMuted);
+      const room = roomManager.getRoom(currentRoomCode);
       const vol = room?.playbackState.masterVolume ?? 0.8;
-      io.to(`room_${code}`).emit("master_volume_updated", {
+      io.to(`room_${currentRoomCode}`).emit("master_volume_updated", {
         volume: vol,
         isMuted: payload.isMuted
       });
-      broadcastRoomUpdate(code);
+      broadcastRoomUpdate(currentRoomCode);
     });
 
     socket.on("playback_skip", () => {
@@ -384,15 +393,19 @@ export function setupSocketHandlers(io: Server) {
       currentGuestId = null;
     });
 
-    // 8. Party Reactions (Real-time emoji bursts)
+    // 8. Party Reactions (Real-time emoji bursts with XSS protection)
+    const ALLOWED_EMOJIS = new Set(["🔥", "🎵", "⚡", "❤️", "🕺", "🔊", "🎉", "👏", "💃", "🥳"]);
     socket.on("party_reaction", (payload: { emoji: string }) => {
-      if (!currentRoomCode) return;
+      if (!currentRoomCode || typeof payload?.emoji !== "string") return;
+      const cleanEmoji = payload.emoji.trim();
+      if (!ALLOWED_EMOJIS.has(cleanEmoji)) return; // Security: reject arbitrary string / HTML injections
+
       const room = roomManager.getRoom(currentRoomCode);
       const guest = currentGuestId ? room?.guests.get(currentGuestId) : null;
-      const senderName = guest ? guest.name : "Guest";
+      const senderName = guest ? guest.name.slice(0, 32) : "Guest";
 
       io.to(`room_${currentRoomCode}`).emit("party_reaction_received", {
-        emoji: payload.emoji,
+        emoji: cleanEmoji,
         senderName
       });
     });
