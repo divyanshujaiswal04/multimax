@@ -2,12 +2,12 @@
 
 > **One Room. Every Device. One Beat.**
 
-### 🌐 [▶ Click Here to Open MultiMax Live Web App](https://cradle-framing-fleet-resort.trycloudflare.com)
+### 🌐 [▶ Click Here to Open MultiMax Live Web App](https://multimax-20sr.onrender.com)
 
-**Current Live Public Link**: [https://cradle-framing-fleet-resort.trycloudflare.com](https://cradle-framing-fleet-resort.trycloudflare.com)  
-*Anyone with this link can create a music room or join from any phone, computer, or tablet worldwide — zero installation, zero login required!*
+**Permanent 24/7 Worldwide Link**: [https://multimax-20sr.onrender.com](https://multimax-20sr.onrender.com)  
+*Anyone with this link can create a music room or join from any phone, computer, or tablet worldwide — 24/7 online, zero installation, zero login required!*
 
-[![Live Demo](https://img.shields.io/badge/Live_App-Open_MultiMax-10b981?style=for-the-badge&logo=googlechrome&logoColor=white)](https://cradle-framing-fleet-resort.trycloudflare.com)
+[![Live Demo](https://img.shields.io/badge/Live_App-Open_MultiMax-10b981?style=for-the-badge&logo=googlechrome&logoColor=white)](https://multimax-20sr.onrender.com)
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy)
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)](https://reactjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.4-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
